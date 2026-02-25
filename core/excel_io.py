@@ -63,6 +63,24 @@ def parse_excel(path_or_bytes: Any) -> ParsedInput:
         if "Mode" not in preassigned_df.columns:
             preassigned_df["Mode"] = "HARD"
 
+    # core/excel_io.py (dentro parse_excel)
+    
+    taskwindows_df = xl.parse("TaskWindows") if "TaskWindows" in xl.sheet_names else pd.DataFrame(
+        columns=["TaskID", "StartDateTime", "EndDateTime", "Mode"]
+    )
+    
+    if "TaskWindows" in xl.sheet_names:
+        _require_columns(taskwindows_df, "TaskWindows", ["TaskID", "StartDateTime", "EndDateTime"])
+        if "Mode" not in taskwindows_df.columns:
+            taskwindows_df["Mode"] = ""
+    
+    taskwindows_df = taskwindows_df.copy()
+    if not taskwindows_df.empty:
+        taskwindows_df["TaskID"] = taskwindows_df["TaskID"].astype(str).str.strip()
+        taskwindows_df["StartDateTime"] = pd.to_datetime(taskwindows_df["StartDateTime"], errors="coerce")
+        taskwindows_df["EndDateTime"] = pd.to_datetime(taskwindows_df["EndDateTime"], errors="coerce")
+        taskwindows_df["Mode"] = taskwindows_df["Mode"].astype(str).str.upper().str.strip()
+
     # Normalize types
     tasks_df = tasks_df.copy()
     resources_df = resources_df.copy()
@@ -110,7 +128,7 @@ def parse_excel(path_or_bytes: Any) -> ParsedInput:
         taskwindows_df["EndDateTime"] = pd.to_datetime(taskwindows_df["EndDateTime"], errors="coerce")
         taskwindows_df["Mode"] = taskwindows_df["Mode"].astype(str).str.upper().str.strip()
     
-    return ParsedInput(tasks_df=tasks_df, resources_df=resources_df, unavailability_df=unavailability_df, preassigned_df=preassigned_df, taskwindows_df=taskwindows_df)
+    return ParsedInput(tasks_df=tasks_df, resources_df=resources_df, unavailability_df=unavailability_df, preassigned_df=preassigned_df, taskwindows_df=taskwindows_df, taskwindows_df=taskwindows_df)
 
 
 # ---------- helpers used by builder ----------

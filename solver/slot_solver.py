@@ -20,24 +20,20 @@ class Role:
     name: str
     allowed_resources: tuple[str, ...]
 
-
-# solver/slot_solver.py
-
 def _build_roles(problem: Problem, task_id: str) -> list[Role]:
     t = problem.tasks[task_id]
     roles: list[Role] = []
 
-    # Fixed resources -> fixed roles
     for rid in t.requirement.fixed_resources:
         roles.append(Role(name=f"fixed:{rid}", allowed_resources=(rid,)))
 
-    # Skill requirements -> expand to count role-units
     for sr in t.requirement.skill_requirements:
         pool = [r.id for r in problem.resources.values() if sr.skill in r.skills]
         pool_t = tuple(sorted(pool))
         for k in range(sr.count):
             roles.append(Role(name=f"skill:{sr.skill}:{k+1}", allowed_resources=pool_t))
 
+    # NEW: if nothing specified, assume 1 generic role = any resource
     if not roles:
         all_resources = tuple(sorted(problem.resources.keys()))
         roles.append(Role(name="any:1", allowed_resources=all_resources))

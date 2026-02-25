@@ -277,26 +277,7 @@ class SlotModelSolver(Solver):
                 model.Add(seg_count == sum(seg_start[(t_id, s)] for s in range(S)))
                 objective_terms.append(weights.w_fragmentation * task.priority * seg_count)
 
-        # (3) Switching / starts of busy blocks per resource (simple proxy)
-        if weights.w_switching > 0:
-            for r in resources:
-                # busy[s] is 1 if any role uses resource r in slot s (capacity makes it 0/1)
-                busy = [model.NewBoolVar(f"busy[{r},{s}]") for s in range(S)]
-                for s in range(S):
-                    terms = cap_terms[(r, s)]
-                    if terms:
-                        # busy == sum(terms)
-                        model.Add(sum(terms) == busy[s])
-                    else:
-                        model.Add(busy[s] == 0)
-                busy_start = [model.NewBoolVar(f"busy_start[{r},{s}]") for s in range(S)]
-                model.Add(busy_start[0] == busy[0])
-                for s in range(1, S):
-                    model.Add(busy_start[s] <= busy[s])
-                    model.Add(busy_start[s] <= 1 - busy[s - 1])
-                    model.Add(busy_start[s] >= busy[s] - busy[s - 1])
-                objective_terms.append(weights.w_switching * sum(busy_start))
-        # Nota: se nice_mask è tutta False e non ci sono NICE, il termine è ignorabile (nessun effetto).
+        # (3) Nota: se nice_mask è tutta False e non ci sono NICE, il termine è ignorabile (nessun effetto).
         if weights.w_nice > 0:
             for t_id, task in problem.tasks.items():
                 nice = problem.task_nice_mask.get(t_id)

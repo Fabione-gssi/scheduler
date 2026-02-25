@@ -175,6 +175,8 @@ class Problem:
     # Optional: common work calendar (Mon-Fri 9-18) is assumed by builder; solver sees availability mask.
     availability_mask: dict[str, list[bool]]  # resource_id -> length S list
     task_allowed_mask: dict[str, list[bool]]  # task_id -> length S list
+    task_allowed_mask: dict[str, list[bool]]  # task_id -> length S list (hard)
+    task_nice_mask: dict[str, list[bool]]     # task_id -> length S list (soft preference)
 
     def num_slots(self) -> int:
         return len(next(iter(self.availability_mask.values()))) if self.availability_mask else 0

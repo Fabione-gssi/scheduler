@@ -401,4 +401,5 @@ def build_problem(parsed: ParsedInput, cfg: BuildConfig) -> Problem:
         tasks=tasks,
         availability_mask=availability_mask,
         task_allowed_mask=task_allowed_mask,
+        task_nice_mask=task_nice_mask,
     )

@@ -47,7 +47,7 @@ with st.sidebar:
     st.header("Ottimalità (3 pesi)")
     w_deadline = st.slider("Scadenze (tardiness)", 0, 100, 50, 1)
     w_fragmentation = st.slider("Frammentazione task", 0, 100, 30, 1)
-    w_switching = st.slider("Switching risorse (proxy)", 0, 100, 20, 1)
+    #w_switching = st.slider("Switching risorse (proxy)", 0, 100, 20, 1)
     w_nice = st.slider("Preferenze (NICE)", 0, 100, 20, 1)
 
     st.header("Limiti solver")

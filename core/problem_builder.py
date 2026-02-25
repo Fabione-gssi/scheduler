@@ -304,6 +304,95 @@ def build_problem(parsed: ParsedInput, cfg: BuildConfig) -> Problem:
             else:
                 tasks[tid].preassigned_soft.append(seg)
 
+    S = grid.n_slots
+    
+    # default: everything allowed; no NICE preference
+    task_allowed_mask: dict[str, list[bool]] = {tid: [True] * S for tid in tasks.keys()}
+    task_nice_mask: dict[str, list[bool]] = {tid: [False] * S for tid in tasks.keys()}
+    
+    tw = parsed.taskwindows_df
+    if tw is not None and not tw.empty:
+        # Validate modes and task IDs
+        allowed_modes = {"BAN", "MUST", "NICE", ""}
+    
+        for _, row in tw.iterrows():
+            tid = str(row.get("TaskID", "")).strip()
+            if tid and tid not in tasks:
+                raise ValueError(f"TaskWindows references unknown TaskID '{tid}'")
+            mode = str(row.get("Mode", "")).strip().upper()
+            if mode not in allowed_modes:
+                raise ValueError(f"TaskWindows Mode invalid '{mode}'. Allowed: BAN, MUST, NICE (or blank)")
+    
+        # group per task
+        for tid, g in tw.groupby("TaskID"):
+            tid = str(tid).strip()
+            if not tid:
+                continue
+    
+            # Split by mode
+            g_mode = g.copy()
+            g_mode["Mode"] = g_mode["Mode"].fillna("").astype(str).str.upper().str.strip()
+    
+            must_rows = g_mode[g_mode["Mode"] == "MUST"]
+            ban_rows = g_mode[g_mode["Mode"] == "BAN"]
+            nice_rows = g_mode[g_mode["Mode"] == "NICE"]
+    
+            must_mask = [False] * S
+            ban_mask = [False] * S
+            nice_mask = [False] * S
+    
+            def add_window_to_mask(mask: list[bool], st, en, label: str):
+                if st is None or en is None or str(st) == "NaT" or str(en) == "NaT":
+                    raise ValueError(f"TaskWindows has invalid datetimes for TaskID '{tid}' ({label})")
+                st = st.to_pydatetime() if hasattr(st, "to_pydatetime") else st
+                en = en.to_pydatetime() if hasattr(en, "to_pydatetime") else en
+                st = _align_dt(st, cfg.slot_minutes)
+                en = _align_dt(en, cfg.slot_minutes)
+                if st < start or en > end:
+                    raise ValueError(f"TaskWindows window outside horizon for TaskID '{tid}': {st}->{en} ({label})")
+                s0, s1 = grid.window_to_slot_range(st, en)
+                for s in range(s0, s1):
+                    mask[s] = True
+    
+            for _, row in must_rows.iterrows():
+                add_window_to_mask(must_mask, row["StartDateTime"], row["EndDateTime"], "MUST")
+    
+            for _, row in ban_rows.iterrows():
+                add_window_to_mask(ban_mask, row["StartDateTime"], row["EndDateTime"], "BAN")
+    
+            for _, row in nice_rows.iterrows():
+                add_window_to_mask(nice_mask, row["StartDateTime"], row["EndDateTime"], "NICE")
+    
+            # allowed semantics:
+            # - if any MUST exists: allowed = MUST_union
+            # - else: allowed = all True
+            if any(must_mask):
+                allowed = must_mask
+            else:
+                allowed = [True] * S
+    
+            # apply BAN always
+            allowed = [a and (not b) for a, b in zip(allowed, ban_mask)]
+    
+            task_allowed_mask[tid] = allowed
+            task_nice_mask[tid] = nice_mask
+    
+    # Extra robust validation: if MUST exists and allowed slots < duration -> impossible
+    for tid, task in tasks.items():
+        if tw is not None and not tw.empty:
+            # MUST exists if any row for tid with mode MUST
+            if not tw.empty:
+                g = tw[tw["TaskID"] == tid]
+                if not g.empty:
+                    must_exists = (g.get("Mode", "").astype(str).str.upper().str.strip() == "MUST").any()
+                    if must_exists:
+                        allowed_slots = sum(1 for v in task_allowed_mask[tid] if v)
+                        if allowed_slots < task.duration_slots:
+                            raise ValueError(
+                                f"Task '{tid}' has MUST windows totaling {allowed_slots} slot(s), "
+                                f"but duration is {task.duration_slots} slot(s). Increase MUST coverage or shorten task."
+                            )
+    
     return Problem(
         start=start,
         end=end,

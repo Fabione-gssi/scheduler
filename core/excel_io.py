@@ -126,7 +126,7 @@ def parse_excel(path_or_bytes: Any) -> ParsedInput:
         taskwindows_df["EndDateTime"] = pd.to_datetime(taskwindows_df["EndDateTime"], errors="coerce")
         taskwindows_df["Mode"] = taskwindows_df["Mode"].astype(str).str.upper().str.strip()
     
-    return ParsedInput(tasks_df=tasks_df, resources_df=resources_df, unavailability_df=unavailability_df, preassigned_df=preassigned_df, taskwindows_df=taskwindows_df, taskwindows_df=taskwindows_df)
+    return ParsedInput(tasks_df=tasks_df, resources_df=resources_df, unavailability_df=unavailability_df, preassigned_df=preassigned_df, taskwindows_df=taskwindows_df)
 
 
 # ---------- helpers used by builder ----------

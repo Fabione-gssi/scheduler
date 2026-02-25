@@ -92,7 +92,75 @@ weights = Weights(w_deadline=w_deadline, w_fragmentation=w_fragmentation, w_swit
 limits = SolveLimits(max_time_seconds=int(max_time), num_search_workers=int(workers))
 
 solver = SlotModelSolver()
-solution = solver.solve(problem, weights=weights, overrides=Overrides(), limits=limits)
+
+# --- Overrides state ---
+if "overrides" not in st.session_state:
+    st.session_state["overrides"] = Overrides()
+
+with st.expander("Modifiche (Lock / Ban) e ri-ottimizzazione", expanded=False):
+    st.write("Lock = vincolo duro: task con esattamente queste risorse in questa finestra.")
+    st.write("Ban = vincolo duro: task NON può usare questa risorsa in questa finestra.")
+
+    colA, colB = st.columns(2)
+
+    with colA:
+        st.subheader("Aggiungi LOCK")
+        lock_task = st.selectbox("Task", options=list(problem.tasks.keys()), key="lock_task")
+        roles_needed = len(problem.tasks[lock_task].requirement.fixed_resources) + sum(
+            sr.count for sr in problem.tasks[lock_task].requirement.skill_requirements
+        )
+        lock_resources = st.multiselect(
+            f"Risorse (devono essere {roles_needed})",
+            options=list(problem.resources.keys()),
+            key="lock_res",
+        )
+        lock_start = st.datetime_input("Inizio lock", value=problem.start, key="lock_start")
+        lock_end = st.datetime_input("Fine lock", value=problem.start + timedelta(hours=1), key="lock_end")
+
+        if st.button("Aggiungi lock"):
+            if len(lock_resources) != roles_needed:
+                st.error(f"Numero risorse errato: servono {roles_needed}.")
+            else:
+                st.session_state["overrides"].locks.append(
+                    LockOverride(
+                        task_id=lock_task,
+                        resource_ids=tuple(lock_resources),
+                        window=Window(lock_start, lock_end),
+                    )
+                )
+                st.success("Lock aggiunto.")
+
+    with colB:
+        st.subheader("Aggiungi BAN")
+        ban_task = st.selectbox("Task", options=list(problem.tasks.keys()), key="ban_task")
+        ban_resource = st.selectbox("Risorsa", options=list(problem.resources.keys()), key="ban_res")
+        ban_start = st.datetime_input("Inizio ban", value=problem.start, key="ban_start")
+        ban_end = st.datetime_input("Fine ban", value=problem.start + timedelta(hours=1), key="ban_end")
+
+        if st.button("Aggiungi ban"):
+            st.session_state["overrides"].bans.append(
+                BanOverride(
+                    task_id=ban_task,
+                    resource_id=ban_resource,
+                    window=Window(ban_start, ban_end),
+                )
+            )
+            st.success("Ban aggiunto.")
+
+    st.subheader("Overrides correnti")
+    st.json({
+        "locks": [dict(task=o.task_id, resources=o.resource_ids, start=str(o.window.start), end=str(o.window.end)) for o in st.session_state["overrides"].locks],
+        "bans": [dict(task=o.task_id, resource=o.resource_id, start=str(o.window.start), end=str(o.window.end)) for o in st.session_state["overrides"].bans],
+    })
+
+    if st.button("Reset overrides"):
+        st.session_state["overrides"] = Overrides()
+        st.success("Overrides resettati.")
+
+    rerun = st.button("Ricalcola con overrides", type="primary")
+
+overrides = st.session_state["overrides"]
+solution = solver.solve(problem, weights=weights, overrides=overrides, limits=limits)
 
 if solution.status not in ("OPTIMAL", "FEASIBLE"):
     st.error(f"Solver status: {solution.status}\n\n{solution.infeasible_reason}")

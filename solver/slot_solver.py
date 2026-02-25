@@ -161,9 +161,6 @@ class SlotModelSolver(Solver):
         # Roles and assignments a[t,i,r,s]
         roles_by_task: Dict[str, list[Role]] = {t: _build_roles(problem, t) for t in tasks}
         # Validate every task has at least 1 role
-        for t in tasks:
-            if not roles_by_task[t]:
-                raise ValueError(f"Task '{t}' has no resource requirement (at least one role required)")
 
         # Assignment variables (sparse by allowed resources and availability)
         a: Dict[Tuple[str, int, str, int], cp_model.IntVar] = {}

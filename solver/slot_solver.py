@@ -128,6 +128,15 @@ class SlotModelSolver(Solver):
         first: Dict[Tuple[str, int], cp_model.IntVar] = {}
         last: Dict[Tuple[str, int], cp_model.IntVar] = {}
 
+        # Apply task allowed mask (hard)
+        for t in tasks:
+            allowed = problem.task_allowed_mask.get(t)
+            if allowed is None:
+                continue
+            for s in range(S):
+                if not allowed[s]:
+                    model.Add(z[(t, s)] == 0)
+
         for t in tasks:
             start_slot[t] = model.NewIntVar(0, S - 1, f"start[{t}]")
             end_slot[t] = model.NewIntVar(1, S, f"end[{t}]")  # end is exclusive

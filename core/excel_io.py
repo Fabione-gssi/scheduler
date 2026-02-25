@@ -17,6 +17,7 @@ class ParsedInput:
     unavailability_df: pd.DataFrame
     preassigned_df: pd.DataFrame
     taskwindows_df: pd.DataFrame
+    taskwindows_df: pd.DataFrame
 
 
 REQUIRED_SHEETS = ["Tasks", "Resources"]

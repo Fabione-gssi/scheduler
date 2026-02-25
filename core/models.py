@@ -138,16 +138,18 @@ class Overrides:
 
 @dataclass(frozen=True)
 class Weights:
-    """Three adjustable weights (0..100) mapped by the UI."""
     w_deadline: int = 50
     w_fragmentation: int = 30
-    w_switching: int = 20
+    w_nice: int = 20  # NEW
 
     def __post_init__(self) -> None:
-        for name, v in ("w_deadline", self.w_deadline), ("w_fragmentation", self.w_fragmentation), ("w_switching", self.w_switching):
+        for name, v in (
+            ("w_deadline", self.w_deadline),
+            ("w_fragmentation", self.w_fragmentation),
+            ("w_nice", self.w_nice),
+        ):
             if not (0 <= v <= 100):
                 raise ValueError(f"{name} must be in 0..100")
-
 
 @dataclass(frozen=True)
 class SolveLimits:

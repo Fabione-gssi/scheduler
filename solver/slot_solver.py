@@ -224,6 +224,15 @@ class SlotModelSolver(Solver):
             for seg in task.preassigned_hard:
                 _enforce_segment_hard(seg.task_id, seg.resource_ids, Window(seg.start, seg.end))
 
+        # Apply task time windows (allowed mask)
+        for t in tasks:
+            allowed = problem.task_allowed_mask.get(t)
+            if allowed is None:
+                continue
+            for s in range(S):
+                if not allowed[s]:
+                    model.Add(z[(t, s)] == 0)
+        
         # Apply overrides: locks & bans (hard)
         for lock in overrides.locks:
             _enforce_segment_hard(lock.task_id, lock.resource_ids, lock.window)

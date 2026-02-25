@@ -48,6 +48,7 @@ with st.sidebar:
     w_deadline = st.slider("Scadenze (tardiness)", 0, 100, 50, 1)
     w_fragmentation = st.slider("Frammentazione task", 0, 100, 30, 1)
     w_switching = st.slider("Switching risorse (proxy)", 0, 100, 20, 1)
+    w_nice = st.slider("Preferenze (NICE)", 0, 100, 20, 1)
 
     st.header("Limiti solver")
     max_time = st.slider("Tempo massimo (s)", 5, 60, 20, 1)

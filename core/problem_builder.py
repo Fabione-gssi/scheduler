@@ -191,6 +191,72 @@ def build_problem(parsed: ParsedInput, cfg: BuildConfig) -> Problem:
     if not tasks:
         raise ValueError("No tasks provided.")
 
+    # core/problem_builder.py
+
+    task_allowed_mask: dict[str, list[bool]] = {}
+    S = grid.n_slots
+    
+    # default: task can be placed anywhere in timegrid (solver will still enforce resource availability)
+    for tid in tasks.keys():
+        task_allowed_mask[tid] = [True] * S
+    
+    # If TaskWindows has ALLOW rows for a task -> restrict to union of those windows
+    tw = parsed.taskwindows_df
+    if tw is not None and not tw.empty:
+        # validate TaskID exist
+        for tid in tw["TaskID"].dropna().astype(str).str.strip().tolist():
+            if tid and tid not in tasks:
+                raise ValueError(f"TaskWindows references unknown TaskID '{tid}'")
+    
+        # group per task
+        for tid, g in tw.groupby("TaskID"):
+            tid = str(tid).strip()
+            if not tid:
+                continue
+    
+            allow_rows = g[g["Mode"].fillna("ALLOW").astype(str).str.upper().str.strip() == "ALLOW"]
+            ban_rows = g[g["Mode"].fillna("ALLOW").astype(str).str.upper().str.strip() == "BAN"]
+    
+            # start with:
+            # - if any ALLOW exists: all False then enable allowed windows
+            # - else: all True then only apply bans
+            if not allow_rows.empty:
+                mask = [False] * S
+                for _, row in allow_rows.iterrows():
+                    st = row["StartDateTime"]
+                    en = row["EndDateTime"]
+                    if str(st) == "NaT" or str(en) == "NaT":
+                        raise ValueError(f"TaskWindows has invalid datetimes for TaskID '{tid}'")
+                    st = st.to_pydatetime() if hasattr(st, "to_pydatetime") else st
+                    en = en.to_pydatetime() if hasattr(en, "to_pydatetime") else en
+                    st = _align_dt(st, cfg.slot_minutes)
+                    en = _align_dt(en, cfg.slot_minutes)
+                    if st < start or en > end:
+                        raise ValueError(f"TaskWindows window outside horizon for TaskID '{tid}': {st}->{en}")
+                    s0, s1 = grid.window_to_slot_range(st, en)
+                    for s in range(s0, s1):
+                        mask[s] = True
+            else:
+                mask = task_allowed_mask[tid][:]
+    
+            # apply bans
+            for _, row in ban_rows.iterrows():
+                st = row["StartDateTime"]
+                en = row["EndDateTime"]
+                if str(st) == "NaT" or str(en) == "NaT":
+                    raise ValueError(f"TaskWindows has invalid datetimes for TaskID '{tid}'")
+                st = st.to_pydatetime() if hasattr(st, "to_pydatetime") else st
+                en = en.to_pydatetime() if hasattr(en, "to_pydatetime") else en
+                st = _align_dt(st, cfg.slot_minutes)
+                en = _align_dt(en, cfg.slot_minutes)
+                if st < start or en > end:
+                    raise ValueError(f"TaskWindows BAN outside horizon for TaskID '{tid}': {st}->{en}")
+                s0, s1 = grid.window_to_slot_range(st, en)
+                for s in range(s0, s1):
+                    mask[s] = False
+    
+            task_allowed_mask[tid] = mask
+    
     # Semantic validation: dependencies reference existing tasks
     for t in tasks.values():
         for d in t.dependencies:
@@ -245,4 +311,5 @@ def build_problem(parsed: ParsedInput, cfg: BuildConfig) -> Problem:
         resources=resources,
         tasks=tasks,
         availability_mask=availability_mask,
+        task_allowed_mask=task_allowed_mask,
     )

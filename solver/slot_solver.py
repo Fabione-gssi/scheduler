@@ -296,6 +296,17 @@ class SlotModelSolver(Solver):
                     model.Add(busy_start[s] <= 1 - busy[s - 1])
                     model.Add(busy_start[s] >= busy[s] - busy[s - 1])
                 objective_terms.append(weights.w_switching * sum(busy_start))
+        # Nota: se nice_mask è tutta False e non ci sono NICE, il termine è ignorabile (nessun effetto).
+        if weights.w_nice > 0:
+            for t_id, task in problem.tasks.items():
+                nice = problem.task_nice_mask.get(t_id)
+                if not nice:
+                    continue
+                for s in range(S):
+                    if nice[s]:
+                        continue
+                    # Penalizza se usi uno slot non-nice
+                    objective_terms.append(weights.w_nice * task.priority * z[(t_id, s)])
 
         # Soft preassignments (reward matching specified resources in specified slots)
         # Implement as penalty for NOT matching.

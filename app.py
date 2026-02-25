@@ -89,7 +89,7 @@ except Exception as e:
     st.error(f"Errore validazione/build: {e}")
     st.stop()
 
-weights = Weights(w_deadline=w_deadline, w_fragmentation=w_fragmentation, w_switching=w_switching)
+weights = Weights(w_deadline=w_deadline, w_fragmentation=w_fragmentation, w_nice=w_nice)
 limits = SolveLimits(max_time_seconds=int(max_time), num_search_workers=int(workers))
 
 solver = SlotModelSolver()

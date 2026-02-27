@@ -163,6 +163,14 @@ with st.expander("Modifiche (Lock / Ban) e ri-ottimizzazione", expanded=False):
 overrides = st.session_state["overrides"]
 solution = solver.solve(problem, weights=weights, overrides=overrides, limits=limits)
 
+st.write("STATUS:", solution.status)
+st.write("OBJ:", solution.objective_value)
+st.write("REASON:", solution.infeasible_reason)
+st.write("OVERRIDES:", {
+    "locks": len(st.session_state["overrides"].locks),
+    "bans": len(st.session_state["overrides"].bans),
+})
+
 if solution.status not in ("OPTIMAL", "FEASIBLE"):
     st.error(f"Solver status: {solution.status}\n\n{solution.infeasible_reason}")
     st.stop()

@@ -1,0 +1,28 @@
+name: Wake Streamlit App
+
+on:
+  schedule:
+    - cron: "15 */4 * * *"
+  workflow_dispatch:
+
+jobs:
+  wake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Playwright
+        run: |
+          npm init -y
+          npm i -D playwright
+          npx playwright install --with-deps chromium
+
+      - name: Wake app if sleeping
+        env:
+          APP_URL: https://scheduler-ailab.streamlit.app/
+        run: node .github/scripts/wake-streamlit.js
